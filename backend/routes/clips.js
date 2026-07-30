@@ -4,11 +4,8 @@ import { artifactPath } from "../lib/paths.js";
 
 const router = Router();
 
-// GET /api/clips/:jobId/:n → video stream (supports range for <video> scrubbing)
-router.get("/:jobId/:n", (req, res) => {
-  const file = artifactPath(req.params.jobId, `clips/${parseInt(req.params.n, 10)}.mp4`);
-  if (!fs.existsSync(file)) return res.status(404).json({ error: "clip not found" });
-
+function streamFile(req, res, file) {
+  if (!fs.existsSync(file)) return res.status(404).json({ error: "not found" });
   const { size } = fs.statSync(file);
   const range = req.headers.range;
   if (range) {
@@ -26,6 +23,14 @@ router.get("/:jobId/:n", (req, res) => {
     res.writeHead(200, { "Content-Length": size, "Content-Type": "video/mp4" });
     fs.createReadStream(file).pipe(res);
   }
-});
+}
+
+router.get("/:jobId/source", (req, res) =>
+  streamFile(req, res, artifactPath(req.params.jobId, "source.mp4"))
+);
+
+router.get("/:jobId/:n", (req, res) =>
+  streamFile(req, res, artifactPath(req.params.jobId, `clips/${parseInt(req.params.n, 10)}.mp4`))
+);
 
 export default router;

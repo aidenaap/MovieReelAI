@@ -3,7 +3,7 @@ import { run } from "../lib/exec.js";
 import { ROOT } from "../lib/paths.js";
 
 const raw = process.env.YTDLP_BIN || "yt-dlp";
-const BIN = raw.includes("/") || raw.includes("\\")
+const BIN = /[\\/]/.test(raw)
   ? (path.isAbsolute(raw) ? raw : path.resolve(ROOT, raw))
   : raw;
 

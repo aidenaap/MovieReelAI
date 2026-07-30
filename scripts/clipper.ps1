@@ -10,8 +10,10 @@ function Retry-ClipJob($id) { Invoke-RestMethod "$Base/jobs/$id/retry" -Method P
 function Watch-ClipJob($id) {
   while ($true) {
     $j = Get-ClipJob $id
-    Write-Host "$($j.state)$(if ($j.error) { " — $($j.error)" })"
-    if ($j.state -in @("awaiting_review", "failed")) { break }
+    $line = $j.state
+    if ($j.error) { $line = $line + ' - ' + $j.error }
+    Write-Host $line
+    if ($j.state -eq 'awaiting_review' -or $j.state -eq 'failed') { break }
     Start-Sleep 3
   }
 }

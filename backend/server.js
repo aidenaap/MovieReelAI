@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./lib/env.js";
 import express from "express";
 import jobsRouter from "./routes/jobs.js";
 import { startWorker } from "./queue/worker.js";

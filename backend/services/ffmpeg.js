@@ -1,6 +1,11 @@
+import path from "node:path";
 import { run } from "../lib/exec.js";
+import { ROOT } from "../lib/paths.js";
 
-const BIN = process.env.FFMPEG_BIN || "ffmpeg";
+const raw = process.env.FFMPEG_BIN || "ffmpeg";
+const BIN = /[\\/]/.test(raw)
+  ? (path.isAbsolute(raw) ? raw : path.resolve(ROOT, raw))
+  : raw;
 
 export async function extractAudio(videoPath, wavPath) {
   await run(BIN, [

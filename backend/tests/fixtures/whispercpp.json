@@ -1,0 +1,12 @@
+{
+  "result": { "language": "en" },
+  "transcription": [
+    { "text": " Look", "offsets": { "from": 1240, "to": 1410 } },
+    { "text": " at",   "offsets": { "from": 1450, "to": 1520 } },
+    { "text": " me.",  "offsets": { "from": 1580, "to": 2020 } },
+    { "text": " I'm",  "offsets": { "from": 2600, "to": 2750 } },
+    { "text": " the",  "offsets": { "from": 2780, "to": 2850 } },
+    { "text": " captain", "offsets": { "from": 2890, "to": 3300 } },
+    { "text": " now.", "offsets": { "from": 3340, "to": 3700 } }
+  ]
+}

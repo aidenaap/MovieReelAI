@@ -2,6 +2,7 @@ import "./lib/env.js";
 import express from "express";
 import jobsRouter from "./routes/jobs.js";
 import { startWorker } from "./queue/worker.js";
+import clipsRouter from "./routes/clips.js";
 
 const app = express();
 app.use(express.json());
@@ -10,7 +11,11 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, uptime: process.uptime() });
 });
 
+
 app.use("/api/jobs", jobsRouter);
+
+app.use("/api/clips", clipsRouter);
+
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {

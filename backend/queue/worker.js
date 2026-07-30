@@ -18,6 +18,8 @@ async function tick() {
 }
 
 export function startWorker(intervalMs = 1000) {
+  const n = Jobs.reclaimOrphans();
+  if (n) log.warn(`reclaimed ${n} orphaned job(s) → failed (retryable)`);
   log.info("worker started");
   setInterval(() => tick().catch((e) => log.error("tick error", e)), intervalMs);
 }

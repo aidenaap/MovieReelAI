@@ -9,8 +9,10 @@ import ingest from "./ingest.js";
 import extractAudio from "./extractAudio.js";
 import transcribe from "./transcribe.js";
 import selectMoments from "./selectMoments.js";
+import resolveTimings from "./resolveTimings.js";
+import render from "./render.js";
 
-export const STAGES = [ingest, extractAudio, transcribe, selectMoments];
+export const STAGES = [ingest, extractAudio, transcribe, selectMoments, resolveTimings, render];
 
 export async function runJob(job) {
   ensureDir(jobDir(job.id));

@@ -57,7 +57,19 @@ export const Jobs = {
     return db.prepare(
       "SELECT * FROM jobs WHERE state = 'queued' ORDER BY created_at LIMIT 1"
     ).get();
-  }
+  },
+
+  reclaimOrphans() {
+    const terminal = "('queued','awaiting_review','approved','awaiting_canva','awaiting_canva_manual','published','failed')";
+    const rows = db.prepare(`SELECT id, state FROM jobs WHERE state NOT IN ${terminal}`).all();
+    for (const r of rows) {
+      db.prepare(
+        "UPDATE jobs SET state='failed', failed_stage=?, error=?, updated_at=datetime('now') WHERE id=?"
+      ).run(r.state, "interrupted by server restart", r.id);
+      logEvent.run(r.id, "failed", `orphaned in ${r.state}`);
+    }
+    return rows.length;
+  },
 };
 
 export default db;

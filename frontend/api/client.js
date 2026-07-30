@@ -25,5 +25,7 @@ export const api = {
       body: JSON.stringify(body)
     }).then(j),
   rerender: (id, n) => post(`/api/jobs/${id}/cuts/${n}/rerender`),
-  approve: (id) => post(`/api/jobs/${id}/approve`)
+  approve: (id) => post(`/api/jobs/${id}/approve`),
+  canvaStatus: () => fetch("/api/canva/status").then(j),
+  finalize: (id) => post(`/api/canva/jobs/${id}/finalize`),
 };

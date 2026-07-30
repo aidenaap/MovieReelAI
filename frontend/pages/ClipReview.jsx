@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client.js";
 import { useJobStatus } from "../hooks/useJobStatus.js";
 import CandidateCard from "../components/CandidateCard.jsx";
+import CanvaHandoff from "./CanvaHandoff.jsx";
 
 export default function ClipReview({ jobId }) {
   const job = useJobStatus(jobId);
@@ -27,6 +28,10 @@ export default function ClipReview({ jobId }) {
   };
 
   if (!job) return <p className="text-zinc-500">Loading…</p>;
+
+  if (["awaiting_canva", "awaiting_canva_manual", "publishing", "published"].includes(job.state)) {
+    return <CanvaHandoff jobId={jobId} job={job} canva={data?.canva} />;
+  }
 
   const reviewable = ["awaiting_review", "approved"].includes(job.state) && data?.cuts?.length;
 

@@ -3,6 +3,7 @@ import express from "express";
 import jobsRouter from "./routes/jobs.js";
 import { startWorker } from "./queue/worker.js";
 import clipsRouter from "./routes/clips.js";
+import canvaRouter from "./routes/canva.js";
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/jobs", jobsRouter);
 
 app.use("/api/clips", clipsRouter);
+
+app.use("/api/canva", canvaRouter);
 
 
 const port = process.env.PORT || 3001;

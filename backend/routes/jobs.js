@@ -61,7 +61,8 @@ router.get("/:id/artifacts", (req, res) => {
   res.json({
     transcript: readJson(id, "transcript.json"),
     cuts: readJson(id, "cuts.json"),
-    candidates: readJson(id, "candidates.json")
+    candidates: readJson(id, "candidates.json"),
+    canva: readJson(id, "canva.json")
   });
 });
 

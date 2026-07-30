@@ -55,7 +55,7 @@ export const Jobs = {
 
   claimNextQueued() {
     return db.prepare(
-      "SELECT * FROM jobs WHERE state = 'queued' ORDER BY created_at LIMIT 1"
+      "SELECT * FROM jobs WHERE state IN ('queued','approved') ORDER BY created_at LIMIT 1"
     ).get();
   },
 

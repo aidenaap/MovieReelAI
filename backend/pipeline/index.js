@@ -1,24 +1,22 @@
-import fs from "node:fs";
-import { Jobs } from "../db/index.js";
-import { jobDir, ensureDir, artifactExists, artifactPath } from "../lib/paths.js";
-import { logger } from "../lib/logger.js";
-
-const log = logger("pipeline");
-
 import ingest from "./ingest.js";
 import extractAudio from "./extractAudio.js";
 import transcribe from "./transcribe.js";
 import selectMoments from "./selectMoments.js";
 import resolveTimings from "./resolveTimings.js";
 import render from "./render.js";
+import handoffCanva from "./handoffCanva.js";
+import { Jobs } from "../db/index.js";
+import { jobDir, ensureDir, artifactExists } from "../lib/paths.js";
+import { logger } from "../lib/logger.js";
 
-export const STAGES = [ingest, extractAudio, transcribe, selectMoments, resolveTimings, render];
+const log = logger("pipeline");
 
-export async function runJob(job) {
-  ensureDir(jobDir(job.id));
+export const PRE_REVIEW = [ingest, extractAudio, transcribe, selectMoments, resolveTimings, render];
+export const POST_APPROVAL = [handoffCanva];
 
-  for (const stage of STAGES) {
-    if (artifactExists(job.id, stage.artifact)) {
+async function runStages(job, stages) {
+  for (const stage of stages) {
+    if (stage.artifact && artifactExists(job.id, stage.artifact)) {
       log.info(`${job.id} skip ${stage.name} (artifact exists)`);
       continue;
     }
@@ -29,10 +27,25 @@ export async function runJob(job) {
     } catch (err) {
       Jobs.fail(job.id, stage.name, err?.message ?? err);
       log.error(`${job.id} failed at ${stage.name}`, err);
-      return;
+      return false;
     }
   }
+  return true;
+}
 
-  Jobs.setState(job.id, "awaiting_review");
-  log.info(`${job.id} → awaiting_review`);
+export async function runJob(job) {
+  ensureDir(jobDir(job.id));
+
+  if (job.state === "queued") {
+    if (await runStages(job, PRE_REVIEW)) {
+      Jobs.setState(job.id, "awaiting_review");
+      log.info(`${job.id} → awaiting_review`);
+    }
+    return;
+  }
+
+  if (job.state === "approved") {
+    // handoffCanva sets its own terminal state (awaiting_canva | awaiting_canva_manual)
+    await runStages(job, POST_APPROVAL);
+  }
 }

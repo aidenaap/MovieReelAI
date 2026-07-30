@@ -4,3 +4,6 @@ work/
 output/
 backend/bin/
 frontend/dist/
+backend/db/canva-token.json
+backend/db/*.db*
+backend/db/canva-pending.json

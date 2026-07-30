@@ -8,6 +8,8 @@ const db = new Database(path.join(here, "clipper.db"));
 db.pragma("journal_mode = WAL");
 db.exec(readFileSync(path.join(here, "schema.sql"), "utf8"));
 
+
+
 const logEvent = db.prepare(
   "INSERT INTO job_events (job_id, state, detail) VALUES (?, ?, ?)"
 );
@@ -47,10 +49,13 @@ export const Jobs = {
   },
 
   requeue(id) {
+    const job = this.get(id);
+    const postApproval = ["handoffCanva", "finalize"].includes(job?.failed_stage);
+    const state = postApproval ? "approved" : "queued";
     db.prepare(
-      "UPDATE jobs SET state = 'queued', failed_stage = NULL, error = NULL, updated_at = datetime('now') WHERE id = ?"
-    ).run(id);
-    logEvent.run(id, "queued", "retry");
+      "UPDATE jobs SET state = ?, failed_stage = NULL, error = NULL, updated_at = datetime('now') WHERE id = ?"
+    ).run(state, id);
+    logEvent.run(id, state, "retry");
   },
 
   claimNextQueued() {
@@ -69,6 +74,11 @@ export const Jobs = {
       logEvent.run(r.id, "failed", `orphaned in ${r.state}`);
     }
     return rows.length;
+  },
+
+  remove(id) {
+    db.prepare("DELETE FROM job_events WHERE job_id = ?").run(id);
+    db.prepare("DELETE FROM jobs WHERE id = ?").run(id);
   },
 };
 

@@ -31,6 +31,16 @@ export async function uploadClip(filePath, name = "clip.mp4") {
     },
     body
   });
+
+  let status = job.job;
+  while (status.status === "in_progress") {
+    await sleep(2000);
+    status = (await canvaFetch(`/asset-uploads/${status.id}`)).job;
+  }
+  if (status.status !== "success") {
+    throw new Error(`asset upload failed: ${JSON.stringify(status.error ?? status)}`);
+  }
+  return { assetId: status.asset.id };
 }
 
 // createDesignFromClip(assetId, meta) -> { designId, editUrl }

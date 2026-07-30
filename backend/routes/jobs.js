@@ -5,6 +5,7 @@ import { enqueue } from "../queue/queue.js";
 import { findGaps, snapStart, snapEnd } from "../services/silence.js";
 import { probeDuration, renderClip } from "../services/ffmpeg.js";
 import { artifactPath } from "../lib/paths.js";
+import { jobDir } from "../lib/paths.js";
 
 const router = Router();
 
@@ -41,6 +42,19 @@ router.post("/:id/retry", (req, res) => {
   }
   Jobs.requeue(job.id); // artifacts kept → completed stages skip on rerun
   res.json(Jobs.get(job.id));
+});
+
+const RUNNING = ["ingesting", "extracting", "transcribing", "selecting", "rendering", "publishing"];
+
+router.delete("/:id", (req, res) => {
+  const job = Jobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "not found" });
+  if (RUNNING.includes(job.state)) {
+    return res.status(409).json({ error: `job is ${job.state} — wait or let it fail first` });
+  }
+  Jobs.remove(job.id);
+  fs.rmSync(jobDir(job.id), { recursive: true, force: true });
+  res.json({ deleted: job.id });
 });
 
 const HEAD_PAD = 0.12;

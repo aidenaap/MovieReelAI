@@ -86,4 +86,9 @@ if (!db.prepare("PRAGMA table_info(jobs)").all().some((c) => c.name === "name"))
   db.exec("ALTER TABLE jobs ADD COLUMN name TEXT");
 }
 
+export function renameJob(id, name) {
+  const r = db.prepare("UPDATE jobs SET name = ? WHERE id = ?").run(name, id);
+  return r.changes ? db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) : null;
+}
+
 export default db;

@@ -7,6 +7,7 @@ import { probeDuration, renderClip } from "../services/ffmpeg.js";
 import { artifactPath } from "../lib/paths.js";
 import { jobDir } from "../lib/paths.js";
 import { buildShots, validateShots } from "../services/crop.js";
+import { renameJob } from "../db/index.js";
 
 const router = Router();
 

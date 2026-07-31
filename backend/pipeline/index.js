@@ -8,10 +8,13 @@ import handoffCanva from "./handoffCanva.js";
 import { Jobs } from "../db/index.js";
 import { jobDir, ensureDir, artifactExists } from "../lib/paths.js";
 import { logger } from "../lib/logger.js";
+import detectShots from "./detectShots.js";
 
 const log = logger("pipeline");
 
-export const PRE_REVIEW = [ingest, extractAudio, transcribe, selectMoments, resolveTimings, render];
+export const PRE_REVIEW = [
+  ingest, detectShots, extractAudio, transcribe, selectMoments, resolveTimings, render
+];
 export const POST_APPROVAL = [handoffCanva];
 
 async function runStages(job, stages) {

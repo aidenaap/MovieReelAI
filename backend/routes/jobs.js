@@ -6,6 +6,7 @@ import { findGaps, snapStart, snapEnd } from "../services/silence.js";
 import { probeDuration, renderClip } from "../services/ffmpeg.js";
 import { artifactPath } from "../lib/paths.js";
 import { jobDir } from "../lib/paths.js";
+import { buildShots, validateShots } from "../services/crop.js";
 
 const router = Router();
 
@@ -88,7 +89,7 @@ router.patch("/:id/cuts/:n", async (req, res) => {
   const cut = cuts?.find((c) => c.n === n);
   if (!cut) return res.status(404).json({ error: "cut not found" });
 
-  const { startIdx, endIdx, cropX, mode, status } = req.body ?? {};
+  const { startIdx, endIdx, shots, mode, status } = req.body ?? {};
 
   if (startIdx != null || endIdx != null) {
     const transcript = readJson(id, "transcript.json");
@@ -103,9 +104,16 @@ router.patch("/:id/cuts/:n", async (req, res) => {
     cut.endIdx = e;
     cut.start = Math.max(0, snapStart(transcript.words, s, gaps) - HEAD_PAD);
     cut.end = Math.min(duration, snapEnd(transcript.words, e, gaps, duration) + TAIL_PAD);
+    const shotData = readJson(id, "shots.json") ?? { boundaries: [] };
+    cut.shots = buildShots(shotData.boundaries, cut.start, cut.end, cut.shots ?? []);
     cut.dirty = true;
   }
-  if (cropX != null) { cut.cropX = Math.min(1, Math.max(0, cropX)); cut.dirty = true; }
+  if (shots != null) {
+    const err = validateShots(shots, cut);
+    if (err) return res.status(400).json({ error: err });
+    cut.shots = [...shots].sort((a, b) => a.start - b.start);
+    cut.dirty = true;
+  }
   if (mode != null) {
     if (!["crop", "blur"].includes(mode)) return res.status(400).json({ error: "mode must be crop|blur" });
     cut.mode = mode; cut.dirty = true;

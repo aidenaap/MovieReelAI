@@ -1,6 +1,7 @@
 import path from "node:path";
 import { run } from "../lib/exec.js";
 import { ROOT } from "../lib/paths.js";
+import { normalizeShots, cropExpr } from "./crop.js";
 
 const raw = process.env.FFMPEG_BIN || "ffmpeg";
 const BIN = /[\\/]/.test(raw)
@@ -34,11 +35,11 @@ export async function probeDuration(mediaPath) {
 // cut = { start, end, cropX }, mode = "crop" | "blur"
 export async function renderClip(sourcePath, cut, outPath, mode = "crop") {
   const dur = (cut.end - cut.start).toFixed(3);
-  const filter = mode === "blur" ? blurFilter() : cropFilter(cut.cropX ?? 0.5);
+  const filter = mode === "blur" ? blurFilter() : cropFilter(cut);
 
   await run(BIN, [
     "-y",
-    "-ss", cut.start.toFixed(3),   // input seek + re-encode = frame-accurate
+    "-ss", cut.start.toFixed(3),
     "-t", dur,
     "-i", sourcePath,
     "-filter_complex", filter,
@@ -49,14 +50,14 @@ export async function renderClip(sourcePath, cut, outPath, mode = "crop") {
     "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
     "-movflags", "+faststart",
     outPath
-  ]);
+  ], { stallMs: 300000 });
   return outPath;
 }
 
 // Scale to fill 1920 height, slide a 1080-wide window by normalized cropX (0=left, 1=right).
-function cropFilter(cropX) {
-  const x = Math.min(1, Math.max(0, cropX));
-  return `[0:v]scale=-2:1920,crop=1080:1920:trunc((in_w-1080)*${x.toFixed(4)}/2)*2:0[v]`;
+function cropFilter(cut) {
+  const x = cropExpr(normalizeShots(cut), cut.start);
+  return `[0:v]scale=-2:1920,crop=1080:1920:'${x}':0[v]`;
 }
 
 // Whole frame fits by width; blurred, zoomed copy of itself fills the letterbox.
@@ -67,4 +68,19 @@ function blurFilter() {
     "[fg]scale=1080:-2[fgs]",
     "[bgb][fgs]overlay=(W-w)/2:(H-h)/2[v]"
   ].join(";");
+}
+
+export async function detectShots(videoPath, threshold = 0.4) {
+  const { stderr } = await run(BIN, [
+    "-i", videoPath,
+    "-an", "-sn",
+    "-filter:v", `select='gt(scene,${threshold})',showinfo`,
+    "-f", "null", "-"
+  ], { stallMs: 300000 });
+
+  const times = [];
+  const re = /pts_time:([0-9.]+)/g;
+  let m;
+  while ((m = re.exec(stderr))) times.push(parseFloat(m[1]));
+  return times.sort((a, b) => a - b);
 }

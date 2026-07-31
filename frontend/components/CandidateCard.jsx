@@ -3,11 +3,12 @@ import VideoPlayer from "./VideoPlayer.jsx";
 import WordTimeline from "./WordTimeline.jsx";
 import CropFramer from "./CropFramer.jsx";
 import { api } from "../api/client.js";
+import { normalizeShots } from "../api/crop.js";
 
 export default function CandidateCard({ jobId, cut, words, onChange }) {
   const [local, setLocal] = useState({
     startIdx: cut.startIdx, endIdx: cut.endIdx,
-    cropX: cut.cropX ?? 0.5, mode: cut.mode ?? "crop"
+    shots: normalizeShots(cut), mode: cut.mode ?? "crop"
   });
   const [srcTime, setSrcTime] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -16,7 +17,8 @@ export default function CandidateCard({ jobId, cut, words, onChange }) {
 
   const edited =
     local.startIdx !== cut.startIdx || local.endIdx !== cut.endIdx ||
-    local.cropX !== (cut.cropX ?? 0.5) || local.mode !== (cut.mode ?? "crop");
+    JSON.stringify(local.shots) !== JSON.stringify(normalizeShots(cut)) ||
+    local.mode !== (cut.mode ?? "crop");
   const stale = cut.dirty || edited;
 
   const onTime = useCallback((t) => setSrcTime(cut.start + t), [cut.start]);
@@ -83,9 +85,9 @@ export default function CandidateCard({ jobId, cut, words, onChange }) {
           <CropFramer
             sourceUrl={`/api/clips/${jobId}/source`}
             cut={cut}
-            cropX={local.cropX}
+            shots={local.shots}
             mode={local.mode}
-            onCropX={(v) => setLocal((l) => ({ ...l, cropX: v }))}
+            onShots={(s) => setLocal((l) => ({ ...l, shots: s }))}
             onMode={(m) => setLocal((l) => ({ ...l, mode: m }))}
           />
 

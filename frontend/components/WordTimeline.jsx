@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-export default function WordTimeline({ words, startIdx, endIdx, activeIdx, onRangeChange }) {
+export default function WordTimeline({ words, startIdx, endIdx, activeIdx, onRangeChange, onWordClick }) {
   const dragging = useRef(null);
 
   const onMove = (e) => {
@@ -27,12 +27,12 @@ export default function WordTimeline({ words, startIdx, endIdx, activeIdx, onRan
     <span
       onPointerDown={grab(which)}
       title={`Drag to move ${which} point`}
-      className="inline-block w-1.5 h-5 mx-1 align-middle bg-amber-400 rounded cursor-ew-resize"
+      className="inline-block w-1.5 h-5 mx-1 align-middle bg-zinc-200 hover:bg-white rounded cursor-ew-resize"
     />
   );
 
   return (
-    <div className="leading-8 text-sm select-none max-h-48 overflow-y-auto rounded-lg bg-zinc-950/60 p-3">
+    <div className="leading-8 text-sm select-none max-h-40 overflow-y-auto rounded-lg bg-zinc-950/60 p-2">
       {words.map((w) => {
         const inRange = w.i >= startIdx && w.i <= endIdx;
         const active = w.i === activeIdx;
@@ -41,10 +41,13 @@ export default function WordTimeline({ words, startIdx, endIdx, activeIdx, onRan
             {w.i === startIdx && <Handle which="start" />}
             <span
               data-idx={w.i}
+              onClick={() => inRange && onWordClick?.(w)}
+              title={inRange ? "Click to jump playhead here" : ""}
               className={[
                 "px-0.5 rounded",
-                active ? "bg-emerald-500 text-zinc-950"
-                  : inRange ? "bg-zinc-800 text-zinc-100"
+                inRange ? "cursor-pointer" : "",
+                active ? "bg-sky-400 text-zinc-950"
+                  : inRange ? "bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
                   : "text-zinc-600"
               ].join(" ")}
             >

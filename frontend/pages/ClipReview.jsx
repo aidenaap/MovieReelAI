@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client.js";
 import { useJobStatus } from "../hooks/useJobStatus.js";
-import CandidateCard from "../components/CandidateCard.jsx";
+import ClipEditor from "../components/ClipEditor.jsx";
 import CanvaHandoff from "./CanvaHandoff.jsx";
+
+const DOT = {
+  approved: "bg-emerald-500",
+  rejected: "bg-red-500"
+};
 
 export default function ClipReview({ jobId }) {
   const job = useJobStatus(jobId);
   const [data, setData] = useState(null);
+  const [selN, setSelN] = useState(null);
   const [error, setError] = useState(null);
 
   const load = useCallback(() => {
@@ -54,11 +60,13 @@ export default function ClipReview({ jobId }) {
     );
   }
 
-  const approvedCount = data.cuts.filter((c) => c.status === "approved").length;
+  const cuts = data.cuts;
+  const cut = cuts.find((c) => c.n === selN) ?? cuts[0];
+  const approvedCount = cuts.filter((c) => c.status === "approved").length;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-[1500px] mx-auto">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold">Review candidates</h1>
           <p className="text-sm text-zinc-500 font-mono">{jobId} · {job.state}</p>
@@ -74,16 +82,38 @@ export default function ClipReview({ jobId }) {
           {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
         </div>
       </div>
-      <div className="space-y-6">
-        {data.cuts.map((cut) => (
-          <CandidateCard
+
+      <div className="flex gap-4 items-start">
+        <aside className="w-56 shrink-0 space-y-2">
+          {cuts.map((c) => (
+            <button
+              key={c.n}
+              onClick={() => setSelN(c.n)}
+              className={`w-full rounded-lg border p-2.5 text-left hover:bg-zinc-900 ${
+                c.n === cut.n ? "border-sky-600 bg-zinc-900" : "border-zinc-800 bg-zinc-900/40"} ${
+                c.status === "rejected" ? "opacity-50" : ""}`}
+            >
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-mono text-zinc-500">clip {c.n}</span>
+                <span className="flex items-center gap-1.5 font-mono text-zinc-400">
+                  {(c.score * 100).toFixed(0)}%
+                  <span className={`w-2 h-2 rounded-full ${DOT[c.status] ?? "bg-zinc-600"}`} />
+                </span>
+              </div>
+              <p className="mt-1 text-sm line-clamp-2">{c.hook}</p>
+            </button>
+          ))}
+        </aside>
+
+        <div className="flex-1 min-w-0">
+          <ClipEditor
             key={cut.n}
             jobId={jobId}
             cut={cut}
             words={data.transcript.words}
             onChange={onCutChange}
           />
-        ))}
+        </div>
       </div>
     </div>
   );

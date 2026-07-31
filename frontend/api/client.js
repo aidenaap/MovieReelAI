@@ -28,5 +28,11 @@ export const api = {
   approve: (id) => post(`/api/jobs/${id}/approve`),
   canvaStatus: () => fetch("/api/canva/status").then(j),
   finalize: (id) => post(`/api/canva/jobs/${id}/finalize`),
-  remove: (id) => fetch(`/api/jobs/${id}`, { method: "DELETE" }).then(j)
+  remove: (id) => fetch(`/api/jobs/${id}`, { method: "DELETE" }).then(j),
+  rename: (id, name) =>
+    fetch(`/api/jobs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    }).then(j),
 };

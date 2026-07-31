@@ -82,4 +82,8 @@ export const Jobs = {
   },
 };
 
+if (!db.prepare("PRAGMA table_info(jobs)").all().some((c) => c.name === "name")) {
+  db.exec("ALTER TABLE jobs ADD COLUMN name TEXT");
+}
+
 export default db;

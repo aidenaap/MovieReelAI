@@ -17,6 +17,41 @@ function TrashIcon() {
   );
 }
 
+function NameCell({ job, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(job.name ?? "");
+
+  useEffect(() => { if (!editing) setValue(job.name ?? ""); }, [job.name, editing]);
+
+  const commit = () => {
+    setEditing(false);
+    if (value.trim() !== (job.name ?? "")) onSave(value.trim());
+  };
+
+  return editing ? (
+    <input
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.target.blur();
+        if (e.key === "Escape") { setValue(job.name ?? ""); setEditing(false); }
+      }}
+      className="w-full rounded-md bg-zinc-950 border border-zinc-600 px-2 py-1 text-sm focus:outline-none focus:border-emerald-500"
+    />
+  ) : (
+    <button
+      onClick={() => setEditing(true)}
+      title="Click to rename"
+      className={`w-full truncate rounded-md px-2 py-1 text-left hover:bg-zinc-800 ${
+        job.name ? "text-zinc-100" : "text-zinc-600 italic"}`}
+    >
+      {job.name || "Untitled — click to name"}
+    </button>
+  );
+}
+
 export default function JobList() {
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState(null);
@@ -35,6 +70,13 @@ export default function JobList() {
     catch (err) { setError(err.message); }
   };
 
+  const rename = async (id, name) => {
+    setJobs((js) => js.map((j) => (j.id === id ? { ...j, name } : j)));
+    setError(null);
+    try { await api.rename(id, name); }
+    catch (err) { setError(err.message); load(); }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-xl font-semibold mb-4">Jobs</h1>
@@ -45,6 +87,7 @@ export default function JobList() {
           <thead>
             <tr className="border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-500">
               <th className="px-4 py-3 text-left font-medium">Job ID</th>
+              <th className="px-4 py-3 text-left font-medium">Job Name</th>
               <th className="px-4 py-3 text-left font-medium">Source</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
               <th className="px-4 py-3 text-center font-medium w-16">Delete</th>
@@ -57,6 +100,9 @@ export default function JobList() {
                   <a href={`#/jobs/${j.id}`} className="font-mono hover:text-emerald-400">
                     {j.id}
                   </a>
+                </td>
+                <td className="px-4 py-3 max-w-xs">
+                  <NameCell job={j} onSave={(name) => rename(j.id, name)} />
                 </td>
                 <td className="px-4 py-3">
                   <a href={j.source} target="_blank" rel="noreferrer"
@@ -79,7 +125,7 @@ export default function JobList() {
             ))}
             {!jobs.length && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">No jobs yet.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No jobs yet.</td>
               </tr>
             )}
           </tbody>

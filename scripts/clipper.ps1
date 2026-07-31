@@ -5,7 +5,7 @@ function New-ClipJob($url) {
     -Body (@{ sourceUrl = $url } | ConvertTo-Json)
 }
 function Get-ClipJob($id)   { Invoke-RestMethod "$Base/jobs/$id" }
-function Get-ClipJobs       { Invoke-RestMethod "$Base/jobs" | Format-Table id, state, failed_stage }
+function Get-ClipJobs       { Invoke-RestMethod "$Base/jobs" | Format-Table id, name, state, failed_stage }
 function Retry-ClipJob($id) { Invoke-RestMethod "$Base/jobs/$id/retry" -Method Post }
 function Watch-ClipJob($id) {
   while ($true) {
@@ -16,4 +16,8 @@ function Watch-ClipJob($id) {
     if ($j.state -eq 'awaiting_review' -or $j.state -eq 'failed') { break }
     Start-Sleep 3
   }
+}
+function Rename-ClipJob($id, $name) {
+  Invoke-RestMethod -Uri "$Base/jobs/$id" -Method Patch -ContentType "application/json" `
+    -Body (@{ name = $name } | ConvertTo-Json)
 }

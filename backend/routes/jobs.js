@@ -45,6 +45,15 @@ router.post("/:id/retry", (req, res) => {
   res.json(Jobs.get(job.id));
 });
 
+// Update to naming convention per job
+router.patch("/:id", (req, res) => {
+  const { name } = req.body ?? {};
+  if (typeof name !== "string") return res.status(400).json({ error: "name must be a string" });
+  const job = renameJob(req.params.id, name.trim().slice(0, 120));
+  if (!job) return res.status(404).json({ error: "job not found" });
+  res.json(job);
+});
+
 const RUNNING = ["ingesting", "extracting", "transcribing", "selecting", "rendering", "publishing"];
 
 router.delete("/:id", (req, res) => {

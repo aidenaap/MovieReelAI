@@ -14,4 +14,18 @@ export function cropAt(shots, t) {
   return s.x + (xe - s.x) * p * p * (3 - 2 * p);
 }
 
+export function anchorShots(shots, t0, t1) {
+  const kept = [...shots]
+    .sort((a, b) => a.start - b.start)
+    .filter((s, k) => k === 0 || (s.start > t0 && s.start < t1));
+  return kept.map((s, k, arr) => {
+    const start = k === 0 ? t0 : s.start;
+    const end = arr[k + 1]?.start ?? t1;
+    const pan = s.pan
+      ? { ...s.pan, at: Math.min(Math.max(s.pan.at, start), Math.max(start, end - s.pan.dur)) }
+      : null;
+    return { ...s, start, pan };
+  });
+}
+
 export const shotEnd = (shots, i, cutEnd) => shots[i + 1]?.start ?? cutEnd;

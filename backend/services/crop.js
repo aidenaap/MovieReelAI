@@ -70,5 +70,26 @@ export function validateShots(shots, cut) {
       if (at + dur > next + EPS) return `shot ${i}: pan runs past the shot`;
     }
   }
+  
   return null;
+}
+
+// Client anchors shot 0 to the word start; server pads/snaps. Rebase before validating.
+export function rebaseShots(shots, start, end) {
+  if (!Array.isArray(shots) || !shots.length) return [{ start, x: 0.5, pan: null }];
+  const out = [...shots]
+    .sort((a, b) => a.start - b.start)
+    .filter((s, k) => k === 0 || (s.start > start && s.start < end));
+  return out.map((s, k, arr) => {
+    const st = k === 0 ? start : s.start;
+    const nx = arr[k + 1]?.start ?? end;
+    const x = Math.min(1, Math.max(0, Number(s.x) || 0));
+    let pan = null;
+    if (s.pan) {
+      const dur = Math.min(Math.max(0.2, Number(s.pan.dur) || 0.2), Math.max(0.2, nx - st));
+      const at = Math.min(Math.max(Number(s.pan.at) || st, st), Math.max(st, nx - dur));
+      pan = { at, dur, x: Math.min(1, Math.max(0, Number(s.pan.x) || 0)) };
+    }
+    return { start: st, x, pan };
+  });
 }

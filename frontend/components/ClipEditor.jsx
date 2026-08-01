@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client.js";
-import { normalizeShots, shotEnd } from "../api/crop.js";
+import { normalizeShots, shotEnd, anchorShots } from "../api/crop.js";
 import Panel from "./Panel.jsx";
 import PreviewStage from "./PreviewStage.jsx";
 import EditorTimeline from "./EditorTimeline.jsx";
@@ -26,20 +26,8 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
   // Keep first shot pinned to the (editable) cut start; drop shots outside range.
   const t0 = words[local.startIdx].start;
   const t1 = words[local.endIdx].end;
-  const shots = local.shots;
-  useEffect(() => {
-    setLocal((l) => {
-      const kept = l.shots.filter((sh, k) => k === 0 || (sh.start > t0 && sh.start < t1));
-      if (kept.length === l.shots.length && kept[0]?.start === t0) return l;
-      kept[0] = {
-        ...kept[0],
-        start: t0,
-        pan: kept[0].pan ? { ...kept[0].pan, at: Math.max(t0, kept[0].pan.at) } : null
-      };
-      return { ...l, shots: kept };
-    });
-  }, [t0, t1]);
-
+  const shots = useMemo(() => anchorShots(local.shots, t0, t1), [local.shots, t0, t1]);
+  const setShots = (next) => setLocal((l) => ({ ...l, shots: anchorShots(next, t0, t1) }));
 
   const selIdx = Math.min(sel, shots.length - 1);
   const shot = shots[selIdx];
@@ -50,10 +38,12 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
   const hi = rendered ? cut.end : t1;
   const off = rendered ? cut.start : 0;
 
+  const payload = { startIdx: local.startIdx, endIdx: local.endIdx, shots, mode: local.mode };
   const edited =
     local.startIdx !== cut.startIdx || local.endIdx !== cut.endIdx ||
-    JSON.stringify(local.shots) !== JSON.stringify(normalizeShots(cut)) ||
-    local.mode !== (cut.mode ?? "crop");
+    local.mode !== (cut.mode ?? "crop") ||
+    JSON.stringify(shots) !== JSON.stringify(
+      anchorShots(normalizeShots(cut), words[cut.startIdx].start, words[cut.endIdx].end));
   const stale = cut.dirty || edited;
 
   const seek = (time) => {
@@ -120,10 +110,9 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
   }, [t, words, local.startIdx, local.endIdx]);
 
   const activeShot = shots.reduce((a, s, i) => (t >= s.start ? i : a), 0);
-  const setShotX = (i, x) =>
-    setLocal((l) => ({ ...l, shots: l.shots.map((s, k) => (k === i ? { ...s, x } : s)) }));
+  const setShotX = (i, x) => setShots(shots.map((s, k) => (k === i ? { ...s, x } : s)));
   const patchSel = (changes) =>
-    setLocal((l) => ({ ...l, shots: l.shots.map((s, k) => (k === selIdx ? { ...s, ...changes } : s)) }));
+    setShots(shots.map((s, k) => (k === selIdx ? { ...s, ...changes } : s)));
   const nudge = (which, d) =>
     setLocal((l) => which === "in"
       ? { ...l, startIdx: Math.min(l.endIdx - 1, Math.max(0, l.startIdx + d)) }
@@ -135,8 +124,9 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
     finally { setBusy(false); }
   };
   const saveAndRerender = () => act(async () => {
-    if (edited) onChange(await api.patchCut(jobId, cut.n, local));
+    if (edited) onChange(await api.patchCut(jobId, cut.n, payload));
     onChange(await api.rerender(jobId, cut.n));
+    setLocal((l) => ({ ...l, shots: normalizeShots(cut) }));
     setVideoKey((k) => k + 1); setView("render");
   });
   const setStatus = (status) => act(async () => onChange(await api.patchCut(jobId, cut.n, { status })));
@@ -274,7 +264,7 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
         shots={shots} sel={selIdx} t={t}
         onSeek={seek}
         onRange={(s, e) => setLocal((l) => ({ ...l, startIdx: s, endIdx: e }))}
-        onShots={(s) => setLocal((l) => ({ ...l, shots: s }))}
+        onShots={setShots}
         onSelect={setSel}
       />
 

@@ -8,8 +8,28 @@ import { artifactPath } from "../lib/paths.js";
 import { jobDir } from "../lib/paths.js";
 import { buildShots, validateShots } from "../services/crop.js";
 import { renameJob } from "../db/index.js";
+import { ah } from "../lib/asyncHandler.js";
 
 const router = Router();
+
+function rebaseShots(shots, start, end) {
+  if (!Array.isArray(shots) || !shots.length) return [{ start, x: 0.5, pan: null }];
+  const out = [...shots]
+    .sort((a, b) => a.start - b.start)
+    .filter((s, k) => k === 0 || (s.start > start && s.start < end));
+  return out.map((s, k, arr) => {
+    const st = k === 0 ? start : s.start;
+    const nx = arr[k + 1]?.start ?? end;
+    const x = Math.min(1, Math.max(0, Number(s.x) || 0));
+    let pan = null;
+    if (s.pan) {
+      const dur = Math.min(Math.max(0.2, Number(s.pan.dur) || 0.2), Math.max(0.2, nx - st));
+      const at = Math.min(Math.max(Number(s.pan.at) || st, st), Math.max(st, nx - dur));
+      pan = { at, dur, x: Math.min(1, Math.max(0, Number(s.pan.x) || 0)) };
+    }
+    return { start: st, x, pan };
+  });
+}
 
 router.post("/", (req, res) => {
   const { sourceUrl, sourcePath } = req.body ?? {};
@@ -92,17 +112,19 @@ router.get("/:id/artifacts", (req, res) => {
 });
 
 // PATCH /api/jobs/:id/cuts/:n → edit range/crop/status; server re-snaps timings
-router.patch("/:id/cuts/:n", async (req, res) => {
+router.patch("/:id/cuts/:n", ah(async (req, res) => {
   const { id } = req.params;
   const n = parseInt(req.params.n, 10);
+  const { startIdx, endIdx, shots, mode, status } = req.body ?? {};
   const cuts = readJson(id, "cuts.json");
   const cut = cuts?.find((c) => c.n === n);
   if (!cut) return res.status(404).json({ error: "cut not found" });
 
-  const { startIdx, endIdx, shots, mode, status } = req.body ?? {};
-
   if (startIdx != null || endIdx != null) {
     const transcript = readJson(id, "transcript.json");
+    if (!transcript?.words?.length) return res.status(409).json({ error: "transcript missing" });
+    if (!fs.existsSync(artifactPath(id, "source.mp4")))
+      return res.status(409).json({ error: "source.mp4 missing" });
     const s = startIdx ?? cut.startIdx;
     const e = endIdx ?? cut.endIdx;
     if (!Number.isInteger(s) || !Number.isInteger(e) || s < 0 || e >= transcript.words.length || e <= s) {
@@ -118,12 +140,15 @@ router.patch("/:id/cuts/:n", async (req, res) => {
     cut.shots = buildShots(shotData.boundaries, cut.start, cut.end, cut.shots ?? []);
     cut.dirty = true;
   }
+
   if (shots != null) {
-    const err = validateShots(shots, cut);
+    const rebased = rebaseShots(shots, cut.start, cut.end);
+    const err = validateShots(rebased, cut);
     if (err) return res.status(400).json({ error: err });
-    cut.shots = [...shots].sort((a, b) => a.start - b.start);
+    cut.shots = rebased;
     cut.dirty = true;
   }
+
   if (mode != null) {
     if (!["crop", "blur"].includes(mode)) return res.status(400).json({ error: "mode must be crop|blur" });
     cut.mode = mode; cut.dirty = true;
@@ -135,10 +160,10 @@ router.patch("/:id/cuts/:n", async (req, res) => {
 
   writeCuts(id, cuts);
   res.json(cut);
-});
+}));
 
 // POST /api/jobs/:id/cuts/:n/rerender → regenerate one clip with current cut params
-router.post("/:id/cuts/:n/rerender", async (req, res) => {
+router.post("/:id/cuts/:n/rerender", ah(async (req, res) => {
   const { id } = req.params;
   const n = parseInt(req.params.n, 10);
   const cuts = readJson(id, "cuts.json");
@@ -155,7 +180,7 @@ router.post("/:id/cuts/:n/rerender", async (req, res) => {
   delete cut.dirty;
   writeCuts(id, cuts);
   res.json(cut);
-});
+}));
 
 // POST /api/jobs/:id/approve → gate passes only with ≥1 approved, clean clip
 router.post("/:id/approve", (req, res) => {
@@ -187,7 +212,8 @@ router.get("/:id/stream", (req, res) => {
   };
   send();
   const timer = setInterval(send, 2000);
-  req.on("close", () => clearInterval(timer));
+  req.on("close", () => { clearInterval(timer); res.end(); });
+  res.on("error", () => clearInterval(timer));
 });
 
 export default router;

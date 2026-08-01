@@ -23,9 +23,24 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
   const [err, setErr] = useState(null);
   const videoRef = useRef(null);
 
+  // Keep first shot pinned to the (editable) cut start; drop shots outside range.
   const t0 = words[local.startIdx].start;
   const t1 = words[local.endIdx].end;
   const shots = local.shots;
+  useEffect(() => {
+    setLocal((l) => {
+      const kept = l.shots.filter((sh, k) => k === 0 || (sh.start > t0 && sh.start < t1));
+      if (kept.length === l.shots.length && kept[0]?.start === t0) return l;
+      kept[0] = {
+        ...kept[0],
+        start: t0,
+        pan: kept[0].pan ? { ...kept[0].pan, at: Math.max(t0, kept[0].pan.at) } : null
+      };
+      return { ...l, shots: kept };
+    });
+  }, [t0, t1]);
+
+
   const selIdx = Math.min(sel, shots.length - 1);
   const shot = shots[selIdx];
   const end = shotEnd(shots, selIdx, t1);
@@ -291,4 +306,4 @@ export default function ClipEditor({ jobId, cut, words, onChange }) {
       </div>
     </div>
   );
-}
+} 

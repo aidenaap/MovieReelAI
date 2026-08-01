@@ -49,6 +49,7 @@ export default function EditorTimeline({
       }
       if (best !== L.endIdx) L.onRange(L.startIdx, best);
     } else if (d.kind === "shot") {
+      if (d.i === 0) return; // first keyframe is pinned to the in-point
       const lo = (L.shots[d.i - 1]?.start ?? L.t0) + 0.1;
       const hi = (L.shots[d.i + 1]?.start ?? L.t1) - 0.1;
       const s = Math.min(hi, Math.max(lo, time));
@@ -158,9 +159,14 @@ export default function EditorTimeline({
                     className="absolute top-1 h-3 rounded-sm bg-gradient-to-r from-sky-500/50 to-sky-400/10 border border-sky-500/40"
                     style={{ left: px(s.pan.at), width: Math.max(2, s.pan.dur * zoom) }} />
                 )}
-                <div onPointerDown={grab("shot", i)}
-                  title={`Keyframe · framing ${s.x.toFixed(2)} · drag to retime`}
-                  className={`absolute top-1 w-3 h-3 rotate-45 rounded-[2px] border cursor-ew-resize ${
+                <div
+                  onPointerDown={i === 0 ? undefined : grab("shot", i)}
+                  onClick={i === 0 ? () => onSelect(0) : undefined}
+                  title={i === 0
+                    ? `Start keyframe (pinned to in-point) · framing ${s.x.toFixed(2)}`
+                    : `Keyframe · framing ${s.x.toFixed(2)} · drag to retime`}
+                  className={`absolute top-1 w-3 h-3 rotate-45 rounded-[2px] border ${
+                    i === 0 ? "cursor-pointer" : "cursor-ew-resize"} ${
                     i === sel ? "bg-sky-400 border-sky-200" : "bg-zinc-600 border-zinc-400 hover:bg-zinc-500"}`}
                   style={{ left: px(s.start) - 6 }} />
               </div>

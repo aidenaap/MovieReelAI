@@ -7,3 +7,4 @@ frontend/dist/
 backend/db/canva-token.json
 backend/db/*.db*
 backend/db/canva-pending.json
+backend/downloads

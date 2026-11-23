@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api/client.js";
+import DownloadPanel from "../components/DownloadPanel.jsx";
 
 export default function Upload() {
   const [url, setUrl] = useState("");
@@ -32,6 +33,8 @@ export default function Upload() {
         {busy ? "Creating…" : "Create job"}
       </button>
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+
+      <DownloadPanel />
     </div>
   );
 }

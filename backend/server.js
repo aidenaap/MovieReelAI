@@ -5,6 +5,7 @@ import { startWorker } from "./queue/worker.js";
 import clipsRouter from "./routes/clips.js";
 import canvaRouter from "./routes/canva.js";
 import { logger } from "./lib/logger.js";
+import { downloadRouter } from './lib/download.js';
 const log = logger("server");
 
 const app = express();
@@ -18,6 +19,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/jobs", jobsRouter);
 app.use("/api/clips", clipsRouter);
 app.use("/api/canva", canvaRouter);
+app.use('/api', downloadRouter);
 
 // Error Handling
 app.use((err, req, res, next) => {

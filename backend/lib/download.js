@@ -11,9 +11,10 @@ const DOWNLOADS = path.join(__dirname, '..', 'downloads');
 
 function ytdlp(url, format = 'mp4') {
   fs.mkdirSync(DOWNLOADS, { recursive: true });
-  const args = [
-    '--no-playlist', ...FORMATS[format], '--ffmpeg-location', BIN,
-    '--restrict-filenames', '-o', path.join(DOWNLOADS, '%(title).80B [%(id)s].%(ext)s'),
+    const { args: fmtArgs, suffix = '' } = FORMATS[format];
+    const args = [
+    '--no-playlist', ...fmtArgs, '--ffmpeg-location', BIN,
+    '--restrict-filenames', '-o', path.join(DOWNLOADS, `%(title).80B [%(id)s]${suffix}.%(ext)s`),
     '--print', 'after_move:filepath', '--no-simulate', url
   ];
   return new Promise((resolve, reject) => {
@@ -25,15 +26,22 @@ function ytdlp(url, format = 'mp4') {
     p.on('close', (code) => {
       const file = out.trim().split(/\r?\n/).pop();
       if (code === 0 && file && fs.existsSync(file)) return resolve(file);
-      const msg = err.split(/\r?\n/).filter((l) => l.startsWith('ERROR')).join(' ');
-      reject(new Error(msg || `yt-dlp exited ${code}`));
+      const lines = err.trim().split(/\r?\n/);
+      const msg = lines.filter((l) => l.startsWith('ERROR')).join(' ') || lines.slice(-3).join(' ');
+      reject(new Error(`yt-dlp exited ${code}: ${msg || out.trim().slice(-300) || 'no output'}`));
     });
   });
 }
 
 const FORMATS = {
-  mp4: ['-t', 'mp4'],
-  mp3: ['-x', '--audio-format', 'mp3', '--audio-quality', '0']
+  mp4: { args: ['-t', 'mp4'] },
+  mp3: { args: ['-x', '--audio-format', 'mp3', '--audio-quality', '0'] },
+  'mp3-320': {
+    suffix: '-320',
+    args: ['-x', '--audio-format', 'mp3', '--audio-quality', '320K',
+      '--postprocessor-args', 'ExtractAudio:-compression_level 0']
+  },
+  wav: { args: ['-x', '--audio-format', 'wav'] }
 };
 
 export const downloadRouter = express.Router();
